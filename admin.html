@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adalyn Yönetim Paneli</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; margin: 0; padding: 40px; }
+        .admin-kutu { background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto 30px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        label { font-weight: bold; margin-top: 15px; display: block; color: #555; }
+        input, select { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 15px; background: #000; color: white; border: none; border-radius: 5px; margin-top: 25px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #333; }
+        .mesaj { margin-top: 15px; text-align: center; font-weight: bold; }
+        
+        .ek-buton { background: #ddd; color: #333; padding: 10px; margin-top: 10px; font-size: 14px; }
+        .ek-buton:hover { background: #ccc; }
+
+        /* Ürün Listesi Stilleri */
+        .liste-oge { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+        .liste-oge:last-child { border-bottom: none; }
+        .aksiyon-butonlari button { width: auto; padding: 8px 15px; margin: 0 0 0 10px; font-size: 12px; }
+        .btn-duzenle { background: #2196F3; }
+        .btn-sil { background: #f44336; }
+    </style>
+</head>
+<body>
+
+    <!-- ÜRÜN EKLEME / DÜZENLEME FORMU -->
+    <div class="admin-kutu">
+        <h2 id="formBasligi">Yeni Ürün Ekle</h2>
+        <form id="urunFormu">
+            <label>Ürün Adı:</label>
+            <input type="text" id="isim" required placeholder="Örn: Siyah Baskılı Oversize">
+
+            <label>Kategori:</label>
+            <select id="kategori">
+                <option value="Oversize T-shirt">Oversize T-shirt</option>
+                <option value="Qolsuz T-shirt">Qolsuz T-shirt</option>
+                <option value="Crop T-shirt">Crop T-shirt</option>
+                <option value="Polo Yaxa T-shirt">Polo Yaxa T-shirt</option>
+                <option value="Kapüşonsuz Sviter">Kapüşonsuz Sviter</option>
+                <option value="Hoodie">Hoodie</option>
+                <option value="Bez Çanta">Bez Çanta</option>
+                <option value="Bez Əl Çantası">Bez Əl Çantası</option>
+                <option value="Büzməli Bez Çanta">Büzməli Bez Çanta</option>
+                <option value="Önlük">Önlük</option>
+                <option value="Yastıq Üzü (40×40)">Yastıq Üzü (40×40)</option>
+                <option value="Fincan">Fincan</option>
+            </select>
+
+            <label>Kapak Fotoğrafı Yolu:</label>
+            <input type="text" id="kapakFoto" required placeholder="Örn: Görseller/yeni-urun.jpg">
+
+            <!-- Detay Fotoğrafları Alanı -->
+            <label>Detay Fotoğrafları (İsteğe Bağlı):</label>
+            <div id="detayKutulari">
+                <input type="text" class="detay-foto-input" placeholder="Örn: Görseller/detay-1.jpg">
+            </div>
+            <button type="button" class="ek-buton" onclick="yeniDetayKutusuEkle()">+ Yeni Detay Fotoğrafı Alanı Ekle</button>
+
+            <button type="submit" id="kaydetBtn">Ürünü Vitrine Ekle</button>
+            <button type="button" class="ek-buton" id="iptalBtn" style="display: none;" onclick="formuSifirla()">İptal (Yeni Ürün Eklemeye Dön)</button>
+            <div id="sonucMesaji" class="mesaj"></div>
+        </form>
+    </div>
+
+    <!-- MEVCUT ÜRÜNLER LİSTESİ -->
+    <div class="admin-kutu">
+        <h2>Mevcut Ürünler</h2>
+        <div id="urunListesi">
+            <!-- Ürünler buraya gelecek -->
+        </div>
+    </div>
+
+    <script>
+        let duzenlenenUrunId = null;
+
+        // 1. MEVCUT ÜRÜNLERİ ÇEK VE LİSTELE
+        async function urunleriListele() {
+            try {
+                const cevap = await fetch('http://localhost:5050/api/urunler');
+                const urunler = await cevap.json();
+                const listeDiv = document.getElementById('urunListesi');
+                listeDiv.innerHTML = '';
+
+                urunler.forEach(urun => {
+                    listeDiv.innerHTML += `
+                        <div class="liste-oge">
+                            <div>
+                                <strong>${urun.isim}</strong> <br>
+                                <span style="color:#888; font-size:12px;">${urun.kategori}</span>
+                            </div>
+                            <div class="aksiyon-butonlari">
+                                <button type="button" class="btn-duzenle" onclick="duzenlemeModunaGec(${urun.id})">Düzenle</button>
+                                <button type="button" class="btn-sil" onclick="urunSil(${urun.id})">Sil</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (hata) {
+                console.error("Listeleme hatası", hata);
+            }
+        }
+
+        // 2. DETAY FOTOĞRAFI KUTUSU EKLEME
+        function yeniDetayKutusuEkle(deger = "") {
+            const kutuAlan = document.getElementById('detayKutulari');
+            kutuAlan.innerHTML += `<input type="text" class="detay-foto-input" value="${deger}" placeholder="Örn: Görseller/detay-yeni.jpg">`;
+        }
+
+        // 3. DÜZENLEME MODUNA GEÇİŞ
+        async function duzenlemeModunaGec(id) {
+            const cevap = await fetch('http://localhost:5050/api/urunler');
+            const urunler = await cevap.json();
+            const secilen = urunler.find(u => u.id === id);
+
+            if(secilen) {
+                duzenlenenUrunId = secilen.id;
+                document.getElementById('isim').value = secilen.isim;
+                document.getElementById('kategori').value = secilen.kategori;
+                document.getElementById('kapakFoto').value = secilen.kapakFoto;
+                
+                // Detay fotoğraflarını forma diz
+                const detayKutulari = document.getElementById('detayKutulari');
+                detayKutulari.innerHTML = ''; // Öncekileri temizle
+                if(secilen.detayFotograflar && secilen.detayFotograflar.length > 0) {
+                    secilen.detayFotograflar.forEach(foto => yeniDetayKutusuEkle(foto));
+                } else {
+                    yeniDetayKutusuEkle(); // Boş bir tane koy
+                }
+
+                document.getElementById('formBasligi').innerText = "Ürünü Düzenle";
+                document.getElementById('kaydetBtn').innerText = "Değişiklikleri Kaydet";
+                document.getElementById('iptalBtn').style.display = "block";
+                window.scrollTo(0, 0);
+            }
+        }
+
+        // 4. FORMU SIFIRLAMA (Yeni Eklemeye Dön)
+        function formuSifirla() {
+            duzenlenenUrunId = null;
+            document.getElementById('urunFormu').reset();
+            document.getElementById('detayKutulari').innerHTML = '<input type="text" class="detay-foto-input" placeholder="Örn: Görseller/detay-1.jpg">';
+            document.getElementById('formBasligi').innerText = "Yeni Ürün Ekle";
+            document.getElementById('kaydetBtn').innerText = "Ürünü Vitrine Ekle";
+            document.getElementById('iptalBtn').style.display = "none";
+            document.getElementById('sonucMesaji').innerText = "";
+        }
+
+        // 5. ÜRÜN SİLME
+        async function urunSil(id) {
+            if(confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
+                await fetch(`http://localhost:5050/api/urunler/${id}`, { method: 'DELETE' });
+                urunleriListele(); // Listeyi yenile
+            }
+        }
+
+        // 6. FORM GÖNDERME (EKLE VEYA GÜNCELLE)
+        document.getElementById('urunFormu').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Tüm detay kutularındaki dolu değerleri bir listeye topluyoruz
+            const detayInputlar = document.querySelectorAll('.detay-foto-input');
+            const detaylar = Array.from(detayInputlar).map(input => input.value).filter(val => val.trim() !== "");
+
+            const veri = {
+                isim: document.getElementById('isim').value,
+                kategori: document.getElementById('kategori').value,
+                kapakFoto: document.getElementById('kapakFoto').value,
+                detayFotograflar: detaylar
+            };
+
+            try {
+                // Eğer düzenleme yapıyorsak PUT (Güncelle), yapmıyorsak POST (Ekle) kullan
+                const url = duzenlenenUrunId ? `http://localhost:5050/api/urunler/${duzenlenenUrunId}` : 'http://localhost:5050/api/urunler';
+                const method = duzenlenenUrunId ? 'PUT' : 'POST';
+
+                const cevap = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(veri)
+                });
+
+                if (cevap.ok) {
+                    document.getElementById('sonucMesaji').style.color = "green";
+                    document.getElementById('sonucMesaji').innerText = duzenlenenUrunId ? "✔ Ürün güncellendi!" : "✔ Ürün eklendi!";
+                    formuSifirla();
+                    urunleriListele();
+                }
+            } catch (hata) {
+                document.getElementById('sonucMesaji').style.color = "red";
+                document.getElementById('sonucMesaji').innerText = "Hata oluştu!";
+            }
+        });
+
+        // Sayfa açıldığında ürünleri listele
+        urunleriListele();
+    </script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adalyn Vitrin</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f9f9f9; margin: 0; }
+        
+        /* Ürün Kartı Tasarımı */
+        .urun-karti { 
+            background: white; padding: 15px; border-radius: 10px; text-align: center; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05); width: 300px; cursor: pointer; 
+            transition: transform 0.2s; 
+        }
+        .urun-karti:hover { transform: scale(1.02); }
+        
+        /* Buton Tasarımları */
+        .buton { 
+            display: inline-block; background: #25D366; color: white; text-decoration: none; 
+            padding: 15px 30px; border-radius: 5px; font-weight: bold; margin-top: 20px; 
+        }
+        .geri-buton { 
+            display: inline-block; background: #333; color: white; text-decoration: none; 
+            padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; 
+        }
+
+        /* Filtre Çubuğu Tasarımı */
+        .filtre-alani {
+            display: flex; gap: 10px; overflow-x: auto; padding: 10px 20px; 
+            max-width: 1200px; margin: 0 auto 20px auto;
+            /* Scroll çubuğunu gizlemek için */
+            scrollbar-width: none; 
+        }
+        .filtre-alani::-webkit-scrollbar { display: none; }
+
+        .filtre-buton {
+            background-color: #eee; border: none; padding: 10px 20px; border-radius: 20px;
+            cursor: pointer; white-space: nowrap; font-size: 14px; transition: 0.3s;
+        }
+        .filtre-buton:hover { background-color: #ddd; }
+        .filtre-buton.aktif { background-color: #333; color: white; }
+
+        /* Bulunamadı Mesajı */
+        .bos-mesaj {
+            width: 100%; text-align: center; color: #888; font-size: 18px; padding: 40px 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ANA EKRAN (VİTRİN) -->
+    <div id="ana-ekran">
+        <header style="text-align: center; padding: 40px 20px 20px 20px;">
+            <img src="Görseller/adalyn_logo.PNG" alt="Adalyn Logo" style="width: 100%; max-width: 200px; height: auto;">
+        </header>
+
+        <!-- Kategori Filtre Butonlarının Geleceği Alan -->
+        <div id="filtre-alani" class="filtre-alani">
+            <!-- Butonlar JavaScript ile otomatik eklenecek -->
+        </div>
+
+        <!-- Ürünler -->
+        <div id="urun-galerisi" style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; padding: 0 20px 20px 20px; max-width: 1200px; margin: 0 auto;">
+        </div>
+    </div>
+
+    <!-- DETAY EKRANI -->
+    <div id="detay-ekrani" style="display: none; padding: 40px 20px; max-width: 1000px; margin: 0 auto; text-align: center;">
+        <a onclick="geriDon()" class="geri-buton">← Vitrine Dön</a>
+        <h2 id="detay-baslik" style="font-size: 24px; margin-bottom: 20px;">Tişört Adı</h2>
+        <div id="detay-fotograflar" style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;">
+        </div>
+        <a href="https://wa.me/905XXXXXXXXX" target="_blank" class="buton">WhatsApp'tan Sipariş Ver</a>
+    </div>
+
+    <script>
+        // 1. KATEGORİ LİSTESİ
+        const kategoriler = [
+            "Tümü",
+            "Oversize T-shirt", "Qolsuz T-shirt", "Crop T-shirt", "Polo Yaxa T-shirt", 
+            "Kapüşonsuz Sviter", "Hoodie", "Bez Çanta", "Bez Əl Çantası", 
+            "Büzməli Bez Çanta", "Önlük", "Yastıq Üzü (40×40)", "Fincan"
+        ];
+
+        // 2. ÜRÜNLER LİSTESİ (Artık boş, veriler C# sunucusundan dolacak)
+        let urunler = [];
+
+        // SİSTEM DEĞİŞKENLERİ
+        const galeri = document.getElementById("urun-galerisi");
+        const filtreAlani = document.getElementById("filtre-alani");
+        const anaEkran = document.getElementById("ana-ekran");
+        const detayEkrani = document.getElementById("detay-ekrani");
+
+        // SUNUCUDAN VERİ ÇEKME FONKSİYONU
+        async function urunleriGetir() {
+            try {
+                const cevap = await fetch("http://localhost:5050/api/urunler");
+                urunler = await cevap.json();
+                
+                // Veriler başarıyla geldikten sonra vitrini çiziyoruz
+                vitriniCiz(urunler);
+            } catch (hata) {
+                console.error("Sunucuya bağlanılamadı! Lütfen C# API'nin açık olduğundan emin olun.", hata);
+                galeri.innerHTML = `<div class="bos-mesaj" style="color: red;">Ürünler yüklenirken bir hata oluştu. Sunucu bağlantısını kontrol edin.</div>`;
+            }
+        }
+
+        // 3. FİLTRE BUTONLARINI OLUŞTURMA
+        kategoriler.forEach(kat => {
+            const aktifClass = kat === "Tümü" ? "aktif" : "";
+            filtreAlani.innerHTML += `<button class="filtre-buton ${aktifClass}" onclick="filtrele('${kat}', this)">${kat}</button>`;
+        });
+
+        // 4. VİTRİNİ ÇİZME (Filtreleme Özelliğiyle Birlikte)
+        function vitriniCiz(gosterilecekListe) {
+            galeri.innerHTML = ""; // Önce ekranı temizle
+            
+            if(gosterilecekListe.length === 0) {
+                galeri.innerHTML = `<div class="bos-mesaj">Bu kategoride henüz ürün bulunmamaktadır.</div>`;
+                return;
+            }
+
+            gosterilecekListe.forEach(urun => {
+                // Burada urun.kapakFoto kullandık çünkü C# bize öyle gönderiyor
+                const urunKarti = `
+                    <div class="urun-karti" onclick="detayAc(${urun.id})">
+                        <img src="${urun.kapakFoto}" alt="${urun.isim}" style="width: 100%; border-radius: 8px;">
+                        <h3 style="font-size: 16px; margin: 15px 0;">${urun.isim}</h3>
+                        <span style="color: #888; font-size: 14px;">Detayları İncele →</span>
+                    </div>
+                `;
+                galeri.innerHTML += urunKarti;
+            });
+        }
+
+        // 5. FİLTRELEME İŞLEMİ (Butona basıldığında çalışır)
+        function filtrele(secilenKategori, tiklananButon) {
+            document.querySelectorAll('.filtre-buton').forEach(btn => btn.classList.remove('aktif'));
+            tiklananButon.classList.add('aktif');
+
+            if(secilenKategori === "Tümü") {
+                vitriniCiz(urunler);
+            } else {
+                const filtrelenmisListe = urunler.filter(urun => urun.kategori === secilenKategori);
+                vitriniCiz(filtrelenmisListe);
+            }
+        }
+
+        // 6. DETAY EKRANINI AÇMA
+        function detayAc(id) {
+            const secilenUrun = urunler.find(u => u.id === id); 
+            
+            document.getElementById("detay-baslik").innerText = secilenUrun.isim;
+
+            const detayKutusu = document.getElementById("detay-fotograflar");
+            detayKutusu.innerHTML = ""; 
+            
+            // Burada secilenUrun.detayFotograflar kullandık çünkü C# bize öyle gönderiyor
+            secilenUrun.detayFotograflar.forEach(foto => {
+                detayKutusu.innerHTML += `<img src="${foto}" style="width: 300px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">`;
+            });
+
+            anaEkran.style.display = "none";
+            detayEkrani.style.display = "block";
+            window.scrollTo(0, 0); 
+        }
+
+        // 7. GERİ DÖNME İŞLEMİ
+        function geriDon() {
+            detayEkrani.style.display = "none";
+            anaEkran.style.display = "block";
+            window.scrollTo(0, 0);
+        }
+
+        // HER ŞEY HAZIR OLDUĞUNDA SİSTEMİ BAŞLAT (Verileri Çek)
+        urunleriGetir();
+
+    </script>
+</body>
+</html>
