@@ -13,11 +13,8 @@
         button { width: 100%; padding: 15px; background: #000; color: white; border: none; border-radius: 5px; margin-top: 25px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
         button:hover { background: #333; }
         .mesaj { margin-top: 15px; text-align: center; font-weight: bold; }
-        
         .ek-buton { background: #ddd; color: #333; padding: 10px; margin-top: 10px; font-size: 14px; }
         .ek-buton:hover { background: #ccc; }
-
-        /* Ürün Listesi Stilleri */
         .liste-oge { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
         .liste-oge:last-child { border-bottom: none; }
         .aksiyon-butonlari button { width: auto; padding: 8px 15px; margin: 0 0 0 10px; font-size: 12px; }
@@ -27,7 +24,6 @@
 </head>
 <body>
 
-    <!-- ÜRÜN EKLEME / DÜZENLEME FORMU -->
     <div class="admin-kutu">
         <h2 id="formBasligi">Yeni Ürün Ekle</h2>
         <form id="urunFormu">
@@ -53,7 +49,6 @@
             <label>Kapak Fotoğrafı Yolu:</label>
             <input type="text" id="kapakFoto" required placeholder="Örn: Görseller/yeni-urun.jpg">
 
-            <!-- Detay Fotoğrafları Alanı -->
             <label>Detay Fotoğrafları (İsteğe Bağlı):</label>
             <div id="detayKutulari">
                 <input type="text" class="detay-foto-input" placeholder="Örn: Görseller/detay-1.jpg">
@@ -66,18 +61,21 @@
         </form>
     </div>
 
-    <!-- MEVCUT ÜRÜNLER LİSTESİ -->
     <div class="admin-kutu">
         <h2>Mevcut Ürünler</h2>
-        <div id="urunListesi">
-            <!-- Ürünler buraya gelecek -->
-        </div>
+        <div id="urunListesi"></div>
     </div>
 
     <script>
+        // --- SİSTEME GİRİŞ ŞİFRESİ ---
+        const guvenlikSifresi = prompt("Yönetim paneline girmek için şifrenizi yazın:");
+        if (!guvenlikSifresi) {
+            document.body.innerHTML = "<h2 style='text-align:center; padding: 50px; color: red;'>Erişim Reddedildi. Şifre girmediniz.</h2>";
+            throw new Error("Şifre girilmedi, sistem durduruldu.");
+        }
+
         let duzenlenenUrunId = null;
 
-        // 1. MEVCUT ÜRÜNLERİ ÇEK VE LİSTELE
         async function urunleriListele() {
             try {
                 const cevap = await fetch('https://adalyn-api.onrender.com/api/urunler');
@@ -104,13 +102,11 @@
             }
         }
 
-        // 2. DETAY FOTOĞRAFI KUTUSU EKLEME
         function yeniDetayKutusuEkle(deger = "") {
             const kutuAlan = document.getElementById('detayKutulari');
             kutuAlan.innerHTML += `<input type="text" class="detay-foto-input" value="${deger}" placeholder="Örn: Görseller/detay-yeni.jpg">`;
         }
 
-        // 3. DÜZENLEME MODUNA GEÇİŞ
         async function duzenlemeModunaGec(id) {
             const cevap = await fetch('https://adalyn-api.onrender.com/api/urunler');
             const urunler = await cevap.json();
@@ -122,13 +118,12 @@
                 document.getElementById('kategori').value = secilen.kategori;
                 document.getElementById('kapakFoto').value = secilen.kapakFoto;
                 
-                // Detay fotoğraflarını forma diz
                 const detayKutulari = document.getElementById('detayKutulari');
-                detayKutulari.innerHTML = ''; // Öncekileri temizle
+                detayKutulari.innerHTML = ''; 
                 if(secilen.detayFotograflar && secilen.detayFotograflar.length > 0) {
                     secilen.detayFotograflar.forEach(foto => yeniDetayKutusuEkle(foto));
                 } else {
-                    yeniDetayKutusuEkle(); // Boş bir tane koy
+                    yeniDetayKutusuEkle(); 
                 }
 
                 document.getElementById('formBasligi').innerText = "Ürünü Düzenle";
@@ -138,7 +133,6 @@
             }
         }
 
-        // 4. FORMU SIFIRLAMA (Yeni Eklemeye Dön)
         function formuSifirla() {
             duzenlenenUrunId = null;
             document.getElementById('urunFormu').reset();
@@ -149,19 +143,24 @@
             document.getElementById('sonucMesaji').innerText = "";
         }
 
-        // 5. ÜRÜN SİLME
         async function urunSil(id) {
             if(confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
-                await fetch(`https://adalyn-api.onrender.com/api/urunler/${id}`, { method: 'DELETE' });
-                urunleriListele(); // Listeyi yenile
+                const cevap = await fetch(`https://adalyn-api.onrender.com/api/urunler/${id}`, { 
+                    method: 'DELETE',
+                    headers: { 'Admin-Sifresi': guvenlikSifresi } // Şifreyi gönderiyoruz
+                });
+                
+                if (cevap.ok) {
+                    urunleriListele(); 
+                } else {
+                    alert("Silme işlemi başarısız! Şifre yanlış olabilir.");
+                }
             }
         }
 
-        // 6. FORM GÖNDERME (EKLE VEYA GÜNCELLE)
         document.getElementById('urunFormu').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Tüm detay kutularındaki dolu değerleri bir listeye topluyoruz
             const detayInputlar = document.querySelectorAll('.detay-foto-input');
             const detaylar = Array.from(detayInputlar).map(input => input.value).filter(val => val.trim() !== "");
 
@@ -173,13 +172,15 @@
             };
 
             try {
-                // Eğer düzenleme yapıyorsak PUT (Güncelle), yapmıyorsak POST (Ekle) kullan
                 const url = duzenlenenUrunId ? `https://adalyn-api.onrender.com/api/urunler/${duzenlenenUrunId}` : 'https://adalyn-api.onrender.com/api/urunler';
                 const method = duzenlenenUrunId ? 'PUT' : 'POST';
 
                 const cevap = await fetch(url, {
                     method: method,
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Admin-Sifresi': guvenlikSifresi // Şifreyi gönderiyoruz
+                    },
                     body: JSON.stringify(veri)
                 });
 
@@ -188,6 +189,9 @@
                     document.getElementById('sonucMesaji').innerText = duzenlenenUrunId ? "✔ Ürün güncellendi!" : "✔ Ürün eklendi!";
                     formuSifirla();
                     urunleriListele();
+                } else {
+                    document.getElementById('sonucMesaji').style.color = "red";
+                    document.getElementById('sonucMesaji').innerText = "Yetkisiz İşlem! Şifre yanlış olabilir.";
                 }
             } catch (hata) {
                 document.getElementById('sonucMesaji').style.color = "red";
@@ -195,7 +199,6 @@
             }
         });
 
-        // Sayfa açıldığında ürünleri listele
         urunleriListele();
     </script>
 </body>

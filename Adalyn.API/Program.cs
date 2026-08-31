@@ -15,6 +15,24 @@ builder.Services.AddDbContext<AppDbContext>();
 var app = builder.Build();
 app.UseCors("IzinVer");
 
+// --- GÜVENLİK KATMAPI ---
+app.Use(async (context, next) =>
+{
+    // Sadece ürün ekleme (POST), güncelleme (PUT) ve silme (DELETE) işlemlerinde şifre sor
+    if (context.Request.Method == "POST" || context.Request.Method == "PUT" || context.Request.Method == "DELETE")
+    {
+        // Şifreyi aşağıdan değiştirebilirsin (Şu an: Adalyn2026!)
+        if (!context.Request.Headers.TryGetValue("Admin-Sifresi", out var sifre) || sifre != "Adalyn2026!") 
+        {
+            context.Response.StatusCode = 401; // 401: Yetkisiz Giriş
+            await context.Response.WriteAsync("Yetkisiz Islem! Sifre Yanlis.");
+            return;
+        }
+    }
+    await next();
+});
+// ------------------------
+
 // SİHİRLİ KOD: Sistem çalıştığında veritabanı dosyası yoksa otomatik oluşturur
 using (var scope = app.Services.CreateScope())
 {
