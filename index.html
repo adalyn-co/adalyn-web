@@ -95,7 +95,8 @@
         // SUNUCUDAN VERİ ÇEKME FONKSİYONU
         async function urunleriGetir() {
             try {
-                const cevap = await fetch("http://localhost:5050/api/urunler");
+                // YENİ CANLI API LİNKİMİZ BURAYA EKLENDİ!
+                const cevap = await fetch("https://adalyn-api.onrender.com/api/urunler");
                 urunler = await cevap.json();
                 
                 // Veriler başarıyla geldikten sonra vitrini çiziyoruz

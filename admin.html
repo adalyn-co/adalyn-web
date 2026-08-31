@@ -80,7 +80,7 @@
         // 1. MEVCUT ÜRÜNLERİ ÇEK VE LİSTELE
         async function urunleriListele() {
             try {
-                const cevap = await fetch('http://localhost:5050/api/urunler');
+                const cevap = await fetch('https://adalyn-api.onrender.com/api/urunler');
                 const urunler = await cevap.json();
                 const listeDiv = document.getElementById('urunListesi');
                 listeDiv.innerHTML = '';
@@ -112,7 +112,7 @@
 
         // 3. DÜZENLEME MODUNA GEÇİŞ
         async function duzenlemeModunaGec(id) {
-            const cevap = await fetch('http://localhost:5050/api/urunler');
+            const cevap = await fetch('https://adalyn-api.onrender.com/api/urunler');
             const urunler = await cevap.json();
             const secilen = urunler.find(u => u.id === id);
 
@@ -152,7 +152,7 @@
         // 5. ÜRÜN SİLME
         async function urunSil(id) {
             if(confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
-                await fetch(`http://localhost:5050/api/urunler/${id}`, { method: 'DELETE' });
+                await fetch(`https://adalyn-api.onrender.com/api/urunler/${id}`, { method: 'DELETE' });
                 urunleriListele(); // Listeyi yenile
             }
         }
@@ -174,7 +174,7 @@
 
             try {
                 // Eğer düzenleme yapıyorsak PUT (Güncelle), yapmıyorsak POST (Ekle) kullan
-                const url = duzenlenenUrunId ? `http://localhost:5050/api/urunler/${duzenlenenUrunId}` : 'http://localhost:5050/api/urunler';
+                const url = duzenlenenUrunId ? `https://adalyn-api.onrender.com/api/urunler/${duzenlenenUrunId}` : 'https://adalyn-api.onrender.com/api/urunler';
                 const method = duzenlenenUrunId ? 'PUT' : 'POST';
 
                 const cevap = await fetch(url, {
